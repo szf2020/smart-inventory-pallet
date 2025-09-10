@@ -106,7 +106,7 @@ This document outlines the comprehensive 12-week development timeline for the Sm
 ### Deliverables
 - Working load cell measurement system
 - Calibration procedures
-- [Basic firmware code](../smar-inventory-pallete-phase-1/)
+- [Basic firmware code](../smart-inventory-pallete-phase-1/)
 - Documentation in GitHub Wiki
 
 ---
@@ -114,15 +114,38 @@ This document outlines the comprehensive 12-week development timeline for the Sm
 ## **Week 6 – NFC Integration**
 ### Objectives
 - Integrate NFC vehicle identification system
-- Test multi-vehicle recognition
+- Test module with ESP32
 
 ### Tasks
-- [ ] Connect NFC module to ESP32
-- [ ] Write code to:
-   - [ ] Read NFC card/tag UID
-   - [ ] Display vehicle ID on screen
-- [ ] Link vehicle IDs with **test database** on SaaS platform
-- [ ] Test multiple vehicle tags for recognition
+- [x] Planned to use **PN532 module**, but unavailable, so replaced with **HW-033 NFC reader**
+- [x] Set up NFC reader hardware and code to read card/tag UID
+- [x] Tested output on ESP32 serial monitor
+- [ ] Verification pending — current output shows unreadable characters (␀, �, etc.)
+
+### Deliverables
+- NFC reader setup with ESP32
+- [Initial test code](../phase2-nfc-system/)
+- Documentation of hardware change (PN532 → HW-033)
+- Identified issue with unreadable card data requiring further debugging
+
+---
+
+## **Week 7 – Combined Hardware System**
+### Objectives
+- Combine load cells and NFC system on ESP32
+- Build hardware structure
+
+### Tasks
+- [x] Designed and assembled **hardware structure**
+- [x] Connected **two load cells with HX711 modules** to ESP32
+- [x] Tested both load cells with ESP32 firmware
+- [ ] Accuracy issues observed — still under improvement
+- [ ] Plan to refine calibration and filtering in Week 8
+
+### Deliverables
+- Combined hardware structure
+- [Initial integration tests with dual load cells](../phase-3-combined-hardware/)
+- Documentation of test results and challenges
 
 
 
@@ -138,8 +161,8 @@ This document outlines the comprehensive 12-week development timeline for the Sm
 | Phase | Weeks | Focus Area | Key Deliverables |
 |-------|-------|------------|------------------|
 | **Phase 1** | 1-3 | Planning & Design | Architecture, Requirements, NFC Decision |
-| **Phase 2** | 4-7 | Hardware Development | Load Cell, NFC Integration, Combined System |
-| **Phase 3** | 8-9 | Cloud Integration | SaaS Platform, Dashboard, Authentication |
+| **Phase 2** | 4-7 | Hardware Development | Load Cell, NFC Integration |
+| **Phase 3** | 8-9 | Combined System | Cloud Integration | SaaS Platform, Dashboard, Authentication |
 | **Phase 4** | 10-11 | Testing & Deployment | System Testing, Documentation, Production |
 | **Phase 5** | 12 | Presentation | Final Report, Demo, Submission |
 
@@ -203,4 +226,4 @@ smart-inventory-pallet/
 
 *Last Updated: [Current Date]*
 *Project Duration: 12 Weeks*
-*Team: [Your Name/Team Names]*
+*Name: Chameera K.H.D.*
