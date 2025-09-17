@@ -1,0 +1,207 @@
+/*
+ * HX711 Load Cell Calibration with Flash Memory Storage
+ * Converted for PlatformIO
+ * 
+ * This code calibrates the load cell and stores the calibration factor
+ * in ESP32's flash memory using Preferences library.
+ * 
+ * Hardware Connections:
+ * HX711 VCC -> ESP32 3.3V
+ * HX711 GND -> ESP32 GND  
+ * HX711 DT  -> ESP32 GPIO 5
+ * HX711 SCK -> ESP32 GPIO 18
+ * 
+ * Calibration Process:
+ * 1. Send 'P' to prepare for calibration
+ * 2. Place known weight object on scale
+ * 3. Send 'C' to start calibration
+ * 4. Calibration factor is automatically saved to flash memory
+ */
+
+#include <Arduino.h>
+#include "HX711.h"
+#include <Preferences.h>
+
+// Defines the connected PIN between HX711 and ESP32
+#define LOADCELL_DOUT_PIN 5
+#define LOADCELL_SCK_PIN  18
+
+/////////////////// CALIBRATION WEIGHT CONFIGURATION ///////////////////
+// Enter the weight of the object with known weight for calibration process
+// Before calibration, prepare an object with a known weight in grams
+// Use objects weighing 100 grams or more for better accuracy
+// Change this value to match your calibration weight
+#define weight_of_object_for_calibration 172
+///////////////////////////////////////////////////////////////////////
+
+// Variables for sensor readings and calibration
+long sensor_Reading_Results; 
+float CALIBRATION_FACTOR;
+bool show_Weighing_Results = false;
+int weight_In_g;    // Weight in grams
+float weight_In_oz; // Weight in ounces
+
+// Initialize HX711 and Preferences libraries
+HX711 LOADCELL_HX711;
+Preferences preferences;
+
+void setup() {
+  // Initialize serial communication
+  Serial.begin(115200);
+  Serial.println();
+  delay(2000);
+
+  Serial.println("=== HX711 Load Cell Calibration System ===");
+  Serial.println("Setup...");
+  delay(1000);
+
+  // Initialize Preferences with namespace "CF" (Calibration Factor)
+  preferences.begin("CF", false);
+  delay(100);
+
+  Serial.println();
+  Serial.println("⚠️  IMPORTANT: Do not place any object or weight on the scale during setup!");
+  delay(1000);
+
+  Serial.println();
+  Serial.println("Initializing HX711...");
+  LOADCELL_HX711.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
+
+  Serial.println();
+  Serial.println("✓ Setup complete.");
+  delay(1000);
+
+  // Display calibration instructions
+  Serial.println();
+  Serial.println("=== CALIBRATION INSTRUCTIONS ===");
+  Serial.println("📋 Sequence of commands for calibration:");
+  Serial.println("   1. Send 'P' - Prepare for calibration");
+  Serial.println("   2. Send 'C' - Start calibration process");
+  Serial.println("⚠️  Commands must be sent in order: P → C");
+  Serial.println();
+  Serial.printf("📏 Calibration weight configured: %d grams\n", weight_of_object_for_calibration);
+  Serial.println();
+  delay(1000);
+  
+  Serial.println("📨 Please send 'P' to begin preparation...");
+}
+
+void loop() {
+  // Check for serial input commands
+  if(Serial.available()) {
+    char inChar = (char)Serial.read();
+    Serial.println();
+    Serial.print("📨 Received command: ");
+    Serial.println(inChar);
+
+    // PREPARATION PHASE - Command 'P'
+    if (inChar == 'P' || inChar == 'p') {
+      show_Weighing_Results = false;
+      delay(1000);
+      
+      if (LOADCELL_HX711.is_ready()) {  
+        Serial.println(); 
+        Serial.println("🔄 PREPARATION PHASE");
+        Serial.println("⚠️  Remove all objects from the scale!");
+        Serial.println("⏳ Please wait...");
+        
+        // Countdown for preparation
+        for (byte i = 5; i > 0; i--) {
+          Serial.printf("   %d...\n", i);
+          delay(1000);
+        }
+        
+        // Set scale and tare (zero) the reading
+        LOADCELL_HX711.set_scale(); 
+        Serial.println();
+        Serial.println("⚙️  Setting scale baseline...");
+        delay(1000);
+        
+        LOADCELL_HX711.tare();
+        Serial.println("✅ Scale zeroed (tared)");
+        Serial.println();
+        Serial.printf("📦 Now place your %d gram calibration weight on the scale\n", weight_of_object_for_calibration);
+        Serial.flush();
+        
+        // Countdown for object placement
+        for (byte i = 5; i > 0; i--) {
+          Serial.printf("   %d...\n", i);
+          delay(1000);
+        }
+        
+        Serial.println();
+        Serial.println("📨 Send 'C' to start calibration...");
+      } else {
+        Serial.println("❌ ERROR: HX711 not found or not ready!");
+      }
+    }
+
+    // CALIBRATION PHASE - Command 'C'
+    if (inChar == 'C' || inChar == 'c') {
+      if (LOADCELL_HX711.is_ready()) {
+        Serial.println(); 
+        Serial.println("🔧 CALIBRATION PHASE");
+        Serial.println("⚠️  Keep the calibration weight on the scale!");
+        Serial.println("📊 Taking sensor readings...");
+        Serial.println(); 
+        
+        // Take multiple readings for accuracy
+        for (byte i = 0; i < 5; i++) {
+          sensor_Reading_Results = LOADCELL_HX711.get_units(10);
+          Serial.printf("📈 Reading %d: %ld\n", i+1, sensor_Reading_Results);
+          delay(1000);
+        }
+
+        // Calculate calibration factor
+        CALIBRATION_FACTOR = (float)sensor_Reading_Results / weight_of_object_for_calibration; 
+
+        Serial.println(); 
+        Serial.println("💾 Saving calibration factor to flash memory...");
+        preferences.putFloat("CFVal", CALIBRATION_FACTOR); 
+        delay(500);
+
+        Serial.println("📖 Loading calibration factor from flash memory...");
+        float LOAD_CALIBRATION_FACTOR = preferences.getFloat("CFVal", 0); 
+        delay(500);
+
+        Serial.println("⚙️  Applying calibration factor to scale...");
+        LOADCELL_HX711.set_scale(LOAD_CALIBRATION_FACTOR);
+        delay(500);
+        
+        Serial.println(); 
+        Serial.printf("✅ CALIBRATION FACTOR: %.6f\n", LOAD_CALIBRATION_FACTOR);
+        Serial.printf("📏 Based on %d gram reference weight\n", weight_of_object_for_calibration);
+        delay(2000);
+        
+        show_Weighing_Results = true;
+
+        Serial.println();
+        Serial.println("🎉 CALIBRATION COMPLETE!");
+        Serial.println("📊 Scale is now ready for weighing");
+        Serial.println("🔄 To recalibrate, send 'P' to start over");
+        Serial.println();
+        delay(2000);
+      } else {
+        Serial.println("❌ ERROR: HX711 not found or not ready!");
+      }
+    }
+  }
+
+  // Display weighing results after calibration is complete
+  if (show_Weighing_Results == true) {
+    if (LOADCELL_HX711.is_ready()) {
+      // Get weight readings (average of 10 readings for stability)
+      weight_In_g = LOADCELL_HX711.get_units(10); 
+
+      // Convert to ounces (International avoirdupois ounce: 1 oz = 28.349523125 g)
+      weight_In_oz = (float)weight_In_g / 28.34952;
+      
+      // Display results
+      Serial.printf("⚖️  Weight: %d g | %.2f oz\n", weight_In_g, weight_In_oz);
+    } else {
+      Serial.println("❌ ERROR: HX711 not found!");
+    }
+  }
+
+  delay(1000);
+}
