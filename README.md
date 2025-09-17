@@ -56,7 +56,7 @@ This manual process:
 | **Power Supply**       | Battery/USB power for ESP32             |
 | **Wooden/Plastic Pallet** | Holds crates during loading/unloading |
 
-### Hardware Wiring Diagram
+### Hardware Setup
 
 ![Hardware Setup](docs/hardware-setup.png)
 
