@@ -143,7 +143,7 @@ const BottleDashboard = () => {
         client.end();
       }
     };
-  }, []);
+  }, [client, mqttConfig.host, mqttConfig.port, mqttConfig.protocol]);
 
   const getStatusIcon = () => {
     switch (data.status) {
