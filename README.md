@@ -35,7 +35,7 @@ This manual process:
 
 ### System Architecture
 
-![System Architecture](../docs/architecture-diagram.png)
+![System Architecture](docs/architecture-diagram.png)
 
 1. Crates placed/removed from pallet
 2. Load cell detects weight changes
