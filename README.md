@@ -35,7 +35,7 @@ This manual process:
 
 ### System Architecture
 
-![System Architecture](docs/system-architecture.png)
+![System Architecture](docs/architecture-diagram.png)
 
 1. Crates placed/removed from pallet
 2. Load cell detects weight changes
@@ -56,7 +56,7 @@ This manual process:
 | **Power Supply**       | Battery/USB power for ESP32             |
 | **Wooden/Plastic Pallet** | Holds crates during loading/unloading |
 
-### Hardware Wiring Diagram
+### Hardware Setup
 
 ![Hardware Setup](docs/hardware-setup.png)
 
