@@ -31,7 +31,6 @@
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
-
 #include <PubSubClient.h>
 #include <WiFi.h>
 #include <WiFiManager.h>
@@ -119,7 +118,7 @@ void updateStatus(int current_bottles) {
   if (new_status != current_status) {
     current_status = new_status;
     status_changed = true;
-    Serial.print("📊 Status changed to: ");
+    Serial.print("Status changed to: ");
     Serial.println(current_status);
   }
   
@@ -147,7 +146,7 @@ void publishMQTTData() {
 
 void initializeDisplay() {
   if(!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
-    Serial.println(F("❌ SSD1306 allocation failed"));
+    Serial.println(F("SSD1306 allocation failed"));
     return;
   }
   
@@ -167,7 +166,7 @@ void displayWelcomeScreen() {
   display.setTextColor(SSD1306_WHITE);
   
   display.setCursor(0, 0);
-  display.println(F("=== BOTTLE SCALE ==="));
+  display.println(F("=== SMART INVENTORY PALATE ==="));
   display.println();
   display.println(F("Calibration: 172g"));
   display.println(F("Bottle: 275g each"));
@@ -270,7 +269,7 @@ void setup() {
   delay(100);
 
   Serial.println();
-  Serial.println("⚠️  IMPORTANT: Remove all objects from scale during setup!");
+  Serial.println("IMPORTANT: Remove all objects from scale during setup!");
   delay(1000);
 
   // Initialize HX711 BEFORE WiFi to avoid timing issues
@@ -291,16 +290,16 @@ void setup() {
   }
   
   if (!hx711_ok) {
-    Serial.println("⚠️ Warning: HX711 not responding initially");
+    Serial.println("Warning: HX711 not responding initially");
   } else {
-    Serial.println("✅ HX711 initialized successfully");
+    Serial.println("HX711 initialized successfully");
   }
 
   // Check for stored calibration factor
   float stored_cal_factor = preferences.getFloat("CFVal", 0);
   if (stored_cal_factor != 0) {
-    Serial.println("✅ Found stored calibration factor!");
-    Serial.printf("🔧 Loading calibration factor: %.6f\n", stored_cal_factor);
+    Serial.println("Found stored calibration factor!");
+    Serial.printf("Loading calibration factor: %.6f\n", stored_cal_factor);
     LOADCELL_HX711.set_scale(stored_cal_factor);
     LOADCELL_HX711.tare();
     calibration_completed = true;
@@ -308,7 +307,7 @@ void setup() {
     
     displayCalibrationComplete(stored_cal_factor);
   } else {
-    Serial.println("⚠️  No calibration found - calibration required");
+    Serial.println("No calibration found - calibration required");
     displayWelcomeScreen();
   }
 
@@ -320,19 +319,19 @@ void setup() {
   Serial.println("Initializing MQTT...");
   setupMQTT();
 
-  Serial.println("✅ Setup complete.");
+  Serial.println("Setup complete.");
 
   if (!calibration_completed) {
     Serial.println();
     Serial.println("=== CALIBRATION INSTRUCTIONS ===");
-    Serial.println("📋 Commands:");
+    Serial.println("Commands:");
     Serial.println("   P - Prepare for calibration");
     Serial.println("   C - Start calibration");
     Serial.println();
-    Serial.printf("📏 Calibration weight: %d grams\n", weight_of_object_for_calibration);
-    Serial.printf("🍼 Bottle weight: %d grams each\n", BOTTLE_WEIGHT);
+    Serial.printf("Calibration weight: %d grams\n", weight_of_object_for_calibration);
+    Serial.printf("Bottle weight: %d grams each\n", BOTTLE_WEIGHT);
     Serial.println();
-    Serial.println("📨 Send 'P' to begin...");
+    Serial.println("Send 'P' to begin...");
   }
 }
 
@@ -356,7 +355,7 @@ void loop() {
   if(Serial.available()) {
     char inChar = (char)Serial.read();
     Serial.println();
-    Serial.print("📨 Received: ");
+    Serial.print("Received: ");
     Serial.println(inChar);
 
     // PREPARATION PHASE
@@ -376,8 +375,8 @@ void loop() {
       }
       
       if (hx711_ready) {  
-        Serial.println("🔄 PREPARATION PHASE");
-        Serial.println("⚠️  Remove all objects from scale!");
+        Serial.println("PREPARATION PHASE");
+        Serial.println("Remove all objects from scale!");
         
         displayCalibrationStatus("Remove all objects", 0);
         delay(3000);  // Longer delay for stability
@@ -389,13 +388,13 @@ void loop() {
         }
         
         LOADCELL_HX711.set_scale(); 
-        Serial.println("⚙️  Setting baseline...");
+        Serial.println("Setting baseline...");
         displayCalibrationStatus("Setting baseline...");
         delay(2000);  // Extra time for baseline
         
         LOADCELL_HX711.tare();
-        Serial.println("✅ Scale zeroed");
-        Serial.printf("📦 Place %d gram weight\n", weight_of_object_for_calibration);
+        Serial.println("Scale zeroed");
+        Serial.printf("Place %d gram weight\n", weight_of_object_for_calibration);
         
         displayCalibrationStatus("Place 172g weight");
         delay(3000);
@@ -406,10 +405,10 @@ void loop() {
           delay(1500);
         }
         
-        Serial.println("📨 Send 'C' to calibrate...");
+        Serial.println("Send 'C' to calibrate...");
         displayCalibrationStatus("Send 'C' to start");
       } else {
-        Serial.println("❌ HX711 not ready!");
+        Serial.println("HX711 not ready!");
         displayCalibrationStatus("HX711 ERROR!");
       }
       hx711_busy = false;  // Release protection
@@ -430,40 +429,40 @@ void loop() {
       }
       
       if (hx711_ready) {
-        Serial.println("🔧 CALIBRATION PHASE");
-        Serial.println("📊 Taking readings...");
+        Serial.println("CALIBRATION PHASE");
+        Serial.println("Taking readings...");
         
         displayCalibrationStatus("Calibrating...");
         
         for (byte i = 0; i < 5; i++) {
           delay(1000);  // Wait before each reading
           sensor_Reading_Results = LOADCELL_HX711.get_units(15);  // More averaging for calibration
-          Serial.printf("📈 Reading %d: %ld\n", i+1, sensor_Reading_Results);
+          Serial.printf("Reading %d: %ld\n", i+1, sensor_Reading_Results);
           delay(1000);  // Wait after each reading
         }
 
         CALIBRATION_FACTOR = (float)sensor_Reading_Results / weight_of_object_for_calibration; 
 
-        Serial.println("💾 Saving to flash...");
+        Serial.println("Saving to flash...");
         preferences.putFloat("CFVal", CALIBRATION_FACTOR); 
         delay(500);
 
-        Serial.println("📖 Loading from flash...");
-        float LOAD_CALIBRATION_FACTOR = preferences.getFloat("CFVal", 0); 
+        Serial.println("Loading from flash...");
+        float LOAD_CALIBRATION_FACTOR = preferences.getFloat("CFVal", 0);
         LOADCELL_HX711.set_scale(LOAD_CALIBRATION_FACTOR);
         delay(1000);  // Extra time for scale setting
-        
-        Serial.printf("✅ CALIBRATION FACTOR: %.6f\n", LOAD_CALIBRATION_FACTOR);
-        
+
+        Serial.printf("CALIBRATION FACTOR: %.6f\n", LOAD_CALIBRATION_FACTOR);
+
         calibration_completed = true;
         show_Weighing_Results = true;
 
-        Serial.println("🎉 CALIBRATION COMPLETE!");
-        Serial.println("📊 Ready for bottle counting!");
+        Serial.println("CALIBRATION COMPLETE!");
+        Serial.println("Ready for bottle counting!");
         
         displayCalibrationComplete(LOAD_CALIBRATION_FACTOR);
       } else {
-        Serial.println("❌ HX711 not ready!");
+        Serial.println("HX711 not ready!");
         displayCalibrationStatus("HX711 ERROR!");
       }
       hx711_busy = false;  // Release protection
@@ -524,7 +523,7 @@ void loop() {
             lastMQTTPublish = currentTime;
           }
         } else {
-          Serial.printf("⚠️ Invalid HX711 reading: %ld\n", raw_reading);
+          Serial.printf("Invalid HX711 reading: %ld\n", raw_reading);
           consecutive_failures++;
         }
         
@@ -540,7 +539,7 @@ void loop() {
           display.println("HX711 Communication");
           display.println("Error - Retrying...");
           display.display();
-          Serial.println("❌ HX711 communication error - retrying...");
+          Serial.println("HX711 communication error - retrying...");
           
           // Try to reinitialize HX711
           delay(500);
