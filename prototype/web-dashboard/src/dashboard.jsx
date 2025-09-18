@@ -19,6 +19,22 @@ const BottleDashboard = () => {
   const [history, setHistory] = useState([]);
   const [client, setClient] = useState(null);
 
+  // Check for connection timeout
+  useEffect(() => {
+    const checkConnection = setInterval(() => {
+      if (lastUpdate) {
+        const timeSinceLastUpdate = Date.now() - lastUpdate.getTime();
+        // If no update for more than 30 seconds, mark as offline
+        if (timeSinceLastUpdate > 30000 && connectionStatus === 'connected') {
+          setConnectionStatus('offline');
+          console.log('Connection marked as offline - no data received for 30 seconds');
+        }
+      }
+    }, 5000); // Check every 5 seconds
+
+    return () => clearInterval(checkConnection);
+  }, [lastUpdate, connectionStatus]);
+
   // MQTT Connection Configuration
   const mqttConfig = {
     host: 'broker.hivemq.com',
@@ -96,15 +112,28 @@ const BottleDashboard = () => {
             } else {
               // Handle individual topic updates
               const value = message.toString();
-              const updateField = topic.split('/')[1];
+              const updateField = topic.split('/')[1]; // Gets 'weight', 'bottles', or 'status'
+              
+              let processedValue = value;
+              
+              // Convert numeric fields
+              if (updateField === 'bottles' || updateField === 'weight') {
+                processedValue = parseInt(value) || 0;
+              }
+              
+              // Map the field names correctly
+              let fieldName = updateField;
+              if (updateField === 'weight') {
+                fieldName = 'weight_g'; // Map to weight_g to match data structure
+              }
               
               setData(prev => ({
                 ...prev,
-                [updateField]: updateField === 'bottles' || updateField === 'weight' 
-                  ? parseInt(value) || 0 
-                  : value,
+                [fieldName]: processedValue,
                 timestamp: now.getTime()
               }));
+              
+              console.log(`Updated ${fieldName}: ${processedValue}`);
             }
             
           } catch (error) {
@@ -143,12 +172,14 @@ const BottleDashboard = () => {
         client.end();
       }
     };
-  }, [client, mqttConfig.host, mqttConfig.port, mqttConfig.protocol]);
+  }, []);
 
   const getStatusIcon = () => {
     switch (data.status) {
+      case 'loading':
       case 'load':
         return <TrendingUp className="w-6 h-6 text-green-500" />;
+      case 'unloading':
       case 'unload':
         return <TrendingDown className="w-6 h-6 text-red-500" />;
       default:
@@ -158,8 +189,10 @@ const BottleDashboard = () => {
 
   const getStatusColor = () => {
     switch (data.status) {
+      case 'loading':
       case 'load':
         return 'bg-green-100 text-green-800 border-green-200';
+      case 'unloading':
       case 'unload':
         return 'bg-red-100 text-red-800 border-red-200';
       default:
@@ -258,8 +291,8 @@ const BottleDashboard = () => {
                 {data.status.toUpperCase()}
               </div>
               <div className="text-sm text-gray-500">
-                {data.status === 'load' && 'Bottles being added'}
-                {data.status === 'unload' && 'Bottles being removed'}
+                {(data.status === 'loading' || data.status === 'load') && 'Bottles being removed from scale'}
+                {(data.status === 'unloading' || data.status === 'unload') && 'Bottles being added to scale'}
                 {data.status === 'idle' && 'No change detected'}
               </div>
             </div>
@@ -318,8 +351,8 @@ const BottleDashboard = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          entry.status === 'load' ? 'bg-green-100 text-green-800' :
-                          entry.status === 'unload' ? 'bg-red-100 text-red-800' :
+                          (entry.status === 'loading' || entry.status === 'load') ? 'bg-green-100 text-green-800' :
+                          (entry.status === 'unloading' || entry.status === 'unload') ? 'bg-red-100 text-red-800' :
                           'bg-gray-100 text-gray-800'
                         }`}>
                           {entry.status}

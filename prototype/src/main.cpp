@@ -130,18 +130,24 @@ void publishMQTTData() {
     return;
   }
   
+  // Create JSON payload for bottle-scale/data topic
+  String json_payload = "{\"weight_g\":" + String(weight_In_g) + 
+                       ",\"weight_oz\":" + String(weight_In_oz, 2) + 
+                       ",\"bottles\":" + String(bottle_count) + 
+                       ",\"status\":\"" + current_status + "\"" +
+                       ",\"timestamp\":" + String(millis()) + "}";
+  
   // Publish individual topics
   mqttClient.publish(mqtt_topic_weight, String(weight_In_g).c_str());
   mqttClient.publish(mqtt_topic_bottles, String(bottle_count).c_str());
   mqttClient.publish(mqtt_topic_status, current_status.c_str());
   
-  // Publish combined data (maintaining backward compatibility)
-  String combined_payload = String(weight_In_g) + "," + String(weight_In_oz) + "," + String(bottle_count) + "," + current_status;
-  mqttClient.publish(mqtt_topic_data, combined_payload.c_str());
+  // Publish JSON data to bottle-scale/data topic
+  mqttClient.publish(mqtt_topic_data, json_payload.c_str());
   
-  // Also publish to the original topic for backward compatibility
-  String original_payload = String(weight_In_g) + "," + String(weight_In_oz) + "," + String(bottle_count);
-  mqttClient.publish("weight_count", original_payload.c_str());
+  // Keep backward compatibility with weight_count topic (CSV format)
+  String csv_payload = String(weight_In_g) + "," + String(weight_In_oz, 2) + "," + String(bottle_count);
+  mqttClient.publish("weight_count", csv_payload.c_str());
 }
 
 void initializeDisplay() {
@@ -203,7 +209,7 @@ void displayWeight() {
   display.setTextSize(1);
   display.setTextColor(SSD1306_WHITE);
   display.setCursor(0, 0);
-  display.println(F("=== BOTTLE SCALE ==="));
+  display.println(F("=== SMART INVENTORY PALATE ==="));
   
   display.setTextSize(1);
   display.setCursor(0, 15);
