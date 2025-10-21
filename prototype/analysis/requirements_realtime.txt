@@ -1,0 +1,2 @@
+# Additional requirements for real-time data collection
+paho-mqtt>=1.6.0
