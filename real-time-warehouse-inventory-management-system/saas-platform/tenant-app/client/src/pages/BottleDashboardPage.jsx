@@ -18,6 +18,8 @@ const BottleDashboardPage = () => {
   const [lastUpdate, setLastUpdate] = useState(null);
   const [history, setHistory] = useState([]);
   const [client, setClient] = useState(null);
+  const [nfcVehicle, setNfcVehicle] = useState('');
+  const [transactions, setTransactions] = useState([]);
 
   // Check for connection timeout
   useEffect(() => {
@@ -38,8 +40,8 @@ const BottleDashboardPage = () => {
   // MQTT Connection Configuration
   const mqttConfig = {
     host: 'broker.hivemq.com',
-    port: 8000, // WebSocket port for HiveMQ
-    protocol: 'ws'
+    port: 8884, // WebSocket port for HiveMQ
+    protocol: 'wss' // Use 'ws' for non-secure, 'wss' for secure
   };
 
   useEffect(() => {
@@ -67,12 +69,14 @@ const BottleDashboardPage = () => {
           console.log('Connected to MQTT broker');
           setConnectionStatus('connected');
           
-          // Subscribe to topics
+          // Subscribe to topics (including NFC topics)
           const topics = [
             'bottle-scale/data',
             'bottle-scale/weight',
-            'bottle-scale/bottles', 
-            'bottle-scale/status'
+            'bottle-scale/bottles',
+            'bottle-scale/status',
+            'bottle-scale/nfc/vehicle-id',
+            'bottle-scale/nfc/transaction'
           ];
           
           topics.forEach(topic => {
@@ -113,6 +117,19 @@ const BottleDashboardPage = () => {
               // Handle individual topic updates
               const value = message.toString();
               const updateField = topic.split('/')[1]; // Gets 'weight', 'bottles', or 'status'
+                // Handle NFC specific topics (vehicle id and transactions)
+                if (topic === 'bottle-scale/nfc/vehicle-id') {
+                  const vehicleId = message.toString();
+                  setNfcVehicle(vehicleId);
+                  // keep indicator for a short time
+                  setTimeout(() => setNfcVehicle(''), 5000);
+                }
+
+                // NOTE: do NOT use raw MQTT NFC transaction payloads here.
+                // The MCU may publish a non-epoch timestamp which causes wrong
+                // date display until the backend normalizes it. The web-backend
+                // broadcasts a normalized 'nfc' message over WebSocket (with
+                // receivedAt and server timestamp). See WS handler added below.
               
               let processedValue = value;
               
@@ -174,6 +191,58 @@ const BottleDashboardPage = () => {
     };
   }, []);
 
+    // Fetch recent NFC transactions from backend on mount
+    useEffect(() => {
+      const fetchNfc = async () => {
+        try {
+          const res = await fetch('http://localhost:3001/api/nfc/transactions?limit=50');
+          const json = await res.json();
+          if (json && json.success) {
+            setTransactions(json.data || []);
+          }
+        } catch (e) {
+          console.warn('Failed to fetch NFC transactions from backend', e);
+        }
+      };
+
+      fetchNfc();
+    }, []);
+
+    // WebSocket listener to receive normalized NFC transactions from backend
+    useEffect(() => {
+      let ws;
+      try {
+        const wsUrl = (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + (window.location.hostname || 'localhost') + ':3001/';
+        ws = new WebSocket(wsUrl);
+
+        ws.addEventListener('open', () => {
+          console.log('WebSocket connected to backend for NFC updates');
+        });
+
+        ws.addEventListener('message', (ev) => {
+          try {
+            const payload = JSON.parse(ev.data);
+            if (payload && payload.type === 'nfc' && payload.data) {
+              setTransactions(prev => [payload.data, ...prev].slice(0, 50));
+            }
+            // Optionally handle other types
+          } catch (e) {
+            // ignore parse errors
+          }
+        });
+
+        ws.addEventListener('close', () => {
+          console.log('WebSocket closed');
+        });
+      } catch (e) {
+        console.warn('Failed to connect WebSocket for NFC updates', e);
+      }
+
+      return () => {
+        try { if (ws) ws.close(); } catch (e) {}
+      };
+    }, []);
+
   const getStatusIcon = () => {
     switch (data.status) {
       case 'loading':
@@ -213,7 +282,35 @@ const BottleDashboardPage = () => {
 
   const formatTime = (date) => {
     if (!date) return 'Never';
-    return date.toLocaleTimeString();
+    // Show full date + time in the same locale format as transaction times
+    return date.toLocaleString();
+  };
+
+  // Robust transaction time formatter. Accepts ISO string (receivedAt), numeric timestamp, or tx.timestamp
+  const formatTxTime = (tx) => {
+    if (!tx) return '—';
+    // Prefer ISO receivedAt
+    if (tx.receivedAt) {
+      const d = new Date(tx.receivedAt);
+      if (!isNaN(d.getTime())) return d.toLocaleString();
+    }
+
+    // Then prefer originalTimestamp (MCU-provided) if present
+    if (tx.originalTimestamp) {
+      const t0 = Number(tx.originalTimestamp);
+      const d0 = new Date(t0);
+      if (!isNaN(d0.getTime())) return d0.toLocaleString();
+    }
+
+    // Then prefer timestamp which may be ms since epoch (server normalized)
+    if (tx.timestamp) {
+      const t = Number(tx.timestamp);
+      const d2 = new Date(t);
+      if (!isNaN(d2.getTime())) return d2.toLocaleString();
+    }
+
+    // As a last resort use now
+    return new Date().toLocaleString();
   };
 
   return (
@@ -221,12 +318,15 @@ const BottleDashboardPage = () => {
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+        {/* (Top NFC panels removed) */}
+
+        {/* Connection Info Footer */}
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <Scale className="w-8 h-8 text-blue-600" />
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Bottle Scale Dashboard</h1>
-                <p className="text-gray-600">Real-time monitoring via MQTT</p>
+                <h1 className="text-2xl font-bold text-gray-900">Real-time Inventory</h1>
+                <p className="text-gray-600">Live scale readings, vehicle identification and load/unload transactions</p>
               </div>
             </div>
             
@@ -274,7 +374,7 @@ const BottleDashboardPage = () => {
             </div>
             <div className="space-y-2">
               <div className="text-3xl font-bold text-gray-900">{data.bottles}</div>
-              <div className="text-sm text-gray-500">275g per bottle</div>
+              <div className="text-sm text-gray-500">Estimated (275g / bottle)</div>
             </div>
           </div>
 
@@ -295,6 +395,54 @@ const BottleDashboardPage = () => {
                 {(data.status === 'unloading' || data.status === 'unload') && 'Bottles being added to scale'}
                 {data.status === 'idle' && 'No change detected'}
               </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Vehicle details & Transactions (under main stats) */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          <div className="md:col-span-1 bg-white rounded-lg shadow-lg p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Vehicle Details</h3>
+            <div className="text-sm text-gray-600 mb-4">Last identified vehicle and quick actions</div>
+            <div className="flex items-center space-x-4">
+              <div className={`h-16 w-16 rounded-md flex items-center justify-center text-white font-mono bg-blue-600 text-lg`}>{nfcVehicle ? nfcVehicle.substring(0,6) : '--'}</div>
+              <div>
+                <div className="text-sm font-medium text-gray-900">{nfcVehicle || 'No vehicle detected'}</div>
+                <div className="text-xs text-gray-500 mt-1">Tap a vehicle NFC card on the scale to begin a transaction.</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="md:col-span-2 bg-white rounded-lg shadow-lg p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Load / Unload Transactions</h3>
+            <div className="text-sm text-gray-600 mb-4">Recent completed transactions from vehicles</div>
+            <div className="overflow-auto max-h-48">
+              {transactions.length === 0 ? (
+                <div className="text-sm text-gray-500">No transactions recorded yet</div>
+              ) : (
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-xs text-gray-500 uppercase">
+                      <th className="py-2">Time</th>
+                      <th className="py-2">Vehicle</th>
+                      <th className="py-2">Type</th>
+                      <th className="py-2">Bottles</th>
+                      <th className="py-2">Total on scale</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {transactions.map((tx, i) => (
+                      <tr key={i} className={i % 2 === 0 ? 'bg-gray-50' : ''}>
+                        <td className="py-2 text-gray-700">{formatTxTime(tx)}</td>
+                        <td className="py-2 font-mono text-gray-800">{tx.vehicle_id}</td>
+                        <td className={`py-2 font-medium ${tx.transaction_type === 'LOAD' ? 'text-green-700' : 'text-red-700'}`}>{tx.transaction_type}</td>
+                        <td className="py-2 text-gray-800">{tx.bottle_count}</td>
+                        <td className="py-2 text-gray-600">{tx.total_bottles ?? '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </div>
           </div>
         </div>

@@ -20,7 +20,9 @@ const MQTT_TOPICS = [
   'bottle-scale/weight',
   'bottle-scale/bottles',
   'bottle-scale/status',
-  'bottle-scale/data'
+  'bottle-scale/data',
+  'bottle-scale/nfc/vehicle-id',
+  'bottle-scale/nfc/transaction'
 ];
 
 // Data storage
@@ -34,6 +36,7 @@ let latestData = {
 };
 
 let dataHistory = [];
+let nfcTransactions = []; // recent NFC transactions (in-memory)
 let connectedClients = new Set();
 let mqttConnected = false;
 
@@ -108,6 +111,36 @@ mqttClient.on('message', (topic, message) => {
     
     // Broadcast to WebSocket clients
     broadcastToClients(latestData);
+
+    // If this is an NFC topic, handle specially
+    if (topic === 'bottle-scale/nfc/transaction') {
+      try {
+        const tx = JSON.parse(messageStr);
+        // Preserve MCU original timestamp if present
+        if (tx.timestamp) {
+          tx.originalTimestamp = tx.timestamp;
+        }
+
+        // Normalize: set server-side timestamp (epoch ms) and ISO received time
+        tx.timestamp = Date.now();
+        tx.receivedAt = new Date(tx.timestamp).toISOString();
+
+        nfcTransactions.unshift(tx);
+        if (nfcTransactions.length > 500) nfcTransactions = nfcTransactions.slice(0, 500);
+
+        // Broadcast NFC transaction to WS clients
+        const nfcMsg = JSON.stringify({ type: 'nfc', data: tx });
+        connectedClients.forEach(client => {
+          if (client.readyState === WebSocket.OPEN) {
+            try { client.send(nfcMsg); } catch (e) { connectedClients.delete(client); }
+          } else {
+            connectedClients.delete(client);
+          }
+        });
+      } catch (e) {
+        console.error('❌ Invalid NFC transaction payload', e);
+      }
+    }
     
   } catch (error) {
     console.error('❌ Error processing MQTT message:', error);
@@ -255,6 +288,12 @@ app.get('/api/stats', (req, res) => {
     success: true,
     stats: stats
   });
+});
+
+// NFC transactions API - recent
+app.get('/api/nfc/transactions', (req, res) => {
+  const limit = Math.min(parseInt(req.query.limit) || 50, 500);
+  res.json({ success: true, data: nfcTransactions.slice(0, limit), total: nfcTransactions.length });
 });
 
 // Clear history (useful for testing)
