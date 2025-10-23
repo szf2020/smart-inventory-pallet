@@ -196,7 +196,7 @@ const BottleDashboardPage = () => {
     useEffect(() => {
       const fetchNfc = async () => {
         try {
-          const webDashboardBackendUrl=process.env.REACT_APP_WEB_DASHBOARD_BACKEND_URL || 'http://localhost:3001';
+          const webDashboardBackendUrl=process.env.REACT_APP_WEB_DASHBOARD_BACKEND_URL || 'https://smartinventory.zendensolutions.store/';
           const res = await fetch(`${webDashboardBackendUrl}/api/nfc/transactions?limit=50`);
           const json = await res.json();
           if (json && json.success) {
