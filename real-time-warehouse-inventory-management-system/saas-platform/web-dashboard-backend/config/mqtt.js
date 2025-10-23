@@ -5,7 +5,9 @@ const MQTT_TOPICS = [
   'bottle-scale/weight',
   'bottle-scale/bottles',
   'bottle-scale/status',
-  'bottle-scale/data'
+  'bottle-scale/data',
+  'bottle-scale/nfc/vehicle-id',
+  'bottle-scale/nfc/transaction'
 ];
 
 module.exports = {
