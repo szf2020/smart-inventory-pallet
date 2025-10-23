@@ -5,7 +5,7 @@ import { Activity, Wifi, WifiOff, Scale, Package, TrendingUp, TrendingDown, Minu
 // Note: In a real application, you'd install mqtt via npm: npm install mqtt
 // For this demo, include this script in your HTML: <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 
-const BottleDashboard = () => {
+const BottleDashboardPage = () => {
   const [data, setData] = useState({
     weight_g: 0,
     weight_oz: 0,
@@ -385,4 +385,4 @@ const BottleDashboard = () => {
   );
 };
 
-export default BottleDashboard;
+export default BottleDashboardPage;

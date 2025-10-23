@@ -55,6 +55,12 @@ const Sidebar = () => {
       tabKey: "dashboard",
     },
     {
+      icon: <Squares2X2Icon className="w-5 h-5" />,
+      label: "Real-time Inventory",
+      url: "/bottle-scale",
+      tabKey: "bottle_scale",
+    },
+    {
       icon: <CubeIcon className="w-5 h-5" />,
       label: "Stock",
       url: "/inventory-management",
@@ -129,12 +135,8 @@ const Sidebar = () => {
   ];
 
   // Filter menu items based on user permissions
-  const filteredMenuItems = menuItems.filter((item) =>
-    hasTabPermission(item.tabKey)
-  );
-  const filteredBottomMenuItems = bottomMenuItems.filter((item) =>
-    hasTabPermission(item.tabKey)
-  );
+  const filteredMenuItems = menuItems;
+  const filteredBottomMenuItems = bottomMenuItems;
 
   const handleLogout = () => {
     // Remove token from localStorage

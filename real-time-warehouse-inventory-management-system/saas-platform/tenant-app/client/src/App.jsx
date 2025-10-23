@@ -21,6 +21,7 @@ import RepManagementPage from "./pages/RepManagementPage";
 import ExpenseManagementPage from "./pages/ExpenseManagementPage";
 import ProfilePage from "./pages/ProfilePage";
 import ProfileSettingsPage from "./pages/ProfileSettingsPage";
+import BottleDashboardPage from "./pages/BottleDashboardPage";
 
 const AppLayout = ({ children }) => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -164,16 +165,16 @@ const App = () => {
                   }
                 />
               </Route>
-              {/* <Route element={<ProtectedRoute requiredTabKey="representatives" />}>
+              <Route element={<ProtectedRoute />}>
                 <Route
-                  path="/rep-management"
+                  path="/bottle-scale"
                   element={
                     <AppLayout>
-                      <RepManagementPage />
+                      <BottleDashboardPage />
                     </AppLayout>
                   }
                 />
-              </Route> */}
+              </Route>
               <Route element={<ProtectedRoute requiredTabKey="expenses" />}>
                 <Route
                   path="/expense-management"
