@@ -1,0 +1,153 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: cnh_postgres
+    environment:
+      POSTGRES_DB: cnh_admin_dev
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Mt202161534#
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - cnh_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis (for caching/sessions)
+  redis:
+    image: redis:7-alpine
+    container_name: cnh_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - cnh_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Admin Service Backend
+  admin-backend:
+    build:
+      context: ./admin-service/server
+      dockerfile: Dockerfile
+    container_name: cnh_admin_backend
+    environment:
+      NODE_ENV: production
+      PORT: 7000
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: cnh_admin_dev
+      DB_USERNAME: postgres
+      DB_PASSWORD: Mt202161534#
+      DB_SSL: false
+      JWT_SECRET: your-super-secret-jwt-key-change-in-production
+      ENCRYPTION_KEY: b68dd4cca98e2a260dc1277f53762e0f5df13e64f11673c1d251cdb86faef4ac
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      # Nginx paths inside container
+      NGINX_CONFIG_PATH: /etc/nginx/sites-available
+      NGINX_ENABLED_PATH: /etc/nginx/sites-enabled
+      SSL_CERT_PATH: /etc/letsencrypt/live
+      WEB_ROOT_PATH: /var/www/html
+      BACKEND_UPSTREAM: admin-backend:7000
+      AUTO_SETUP_DOMAIN: true
+      AUTO_GENERATE_SSL: false
+      LETSENCRYPT_EMAIL: admin@zendensolutions.store
+    ports:
+      - "7000:7000"
+    volumes:
+      - nginx_configs:/etc/nginx/sites-available
+      - nginx_enabled:/etc/nginx/sites-enabled
+      - ssl_certs:/etc/letsencrypt
+      - web_root:/var/www/html
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - cnh_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Admin Service Frontend
+  admin-frontend:
+    build:
+      context: ./admin-service/client
+      dockerfile: Dockerfile
+    container_name: cnh_admin_frontend
+    environment:
+      - VITE_API_URL=http://localhost:7000/api/super-admin
+      - VITE_APP_NAME=CNH Distributors Admin Portal
+      - VITE_APP_VERSION=1.0.0
+    ports:
+      - "5173:80"
+    depends_on:
+      - admin-backend
+    networks:
+      - cnh_network
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: cnh_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+      - nginx_configs:/etc/nginx/sites-available
+      - nginx_enabled:/etc/nginx/sites-enabled
+      - ssl_certs:/etc/letsencrypt
+      - web_root:/var/www/html
+      - ./docker/nginx/includes:/etc/nginx/includes
+    depends_on:
+      - admin-backend
+      - admin-frontend
+    networks:
+      - cnh_network
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Certbot for SSL certificates (Let's Encrypt)
+  certbot:
+    image: certbot/certbot
+    container_name: cnh_certbot
+    volumes:
+      - ssl_certs:/etc/letsencrypt
+      - web_root:/var/www/html
+    networks:
+      - cnh_network
+    # Run certbot in standalone mode for testing
+    command: certonly --standalone --email admin@zendensolutions.store --agree-tos --no-eff-email --staging -d test.zendensolutions.store
+
+volumes:
+  postgres_data:
+  redis_data:
+  nginx_configs:
+  nginx_enabled:
+  ssl_certs:
+  web_root:
+
+networks:
+  cnh_network:
+    driver: bridge
