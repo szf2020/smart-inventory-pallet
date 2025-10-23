@@ -1,1 +1,0 @@
-# saas-smart-inventory-pallet
