@@ -77,6 +77,7 @@ const BottleDashboardPage = () => {
             'bottle-scale/status',
             'bottle-scale/nfc/vehicle-id',
             'bottle-scale/nfc/transaction'
+
           ];
           
           topics.forEach(topic => {
@@ -195,7 +196,8 @@ const BottleDashboardPage = () => {
     useEffect(() => {
       const fetchNfc = async () => {
         try {
-          const res = await fetch('http://localhost:3001/api/nfc/transactions?limit=50');
+          webDashboardBackendUrl=process.env.REACT_APP_WEB_DASHBOARD_BACKEND_URL || 'http://localhost:3001';
+          const res = await fetch(`${webDashboardBackendUrl}/api/nfc/transactions?limit=50`);
           const json = await res.json();
           if (json && json.success) {
             setTransactions(json.data || []);
