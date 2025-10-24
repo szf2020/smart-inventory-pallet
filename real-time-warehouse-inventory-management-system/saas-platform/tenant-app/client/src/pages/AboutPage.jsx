@@ -499,11 +499,11 @@ const AboutPage = () => {
               </h2>
               <ul className="space-y-3">
                 {[
-                  'Improve load cell calibration accuracy',
-                  'Enhanced PN532 integration for multi-event NFC control',
-                  'Add OLED display for on-pallet status updates',
-                  'Implement mobile dashboard for fleet monitoring',
-                  'Cloud AI-based stock analytics and predictive insights',
+                  'Smart Pallet Network – Connect multiple pallets for full warehouse automation and synchronized inventory tracking.',
+                  'Cloud AI Analytics – Predict demand, optimize stock flow, and generate smart insights.',
+                  'Machine Vision Integration – Identify bottle types and sizes automatically during loading.',
+                  'Smart Power Management – Introduce energy-efficient operation with low-power modes or solar options.',
+                  'ERP/SaaS Integration – Sync pallet data with enterprise and cloud platforms seamlessly.',
                 ].map((item, idx) => (
                   <li key={idx} className="flex items-start gap-3">
                     <ArrowRight className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
