@@ -22,6 +22,7 @@ import ExpenseManagementPage from "./pages/ExpenseManagementPage";
 import ProfilePage from "./pages/ProfilePage";
 import ProfileSettingsPage from "./pages/ProfileSettingsPage";
 import BottleDashboardPage from "./pages/BottleDashboardPage";
+import AboutPage from "./pages/AboutPage";
 
 const AppLayout = ({ children }) => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -216,6 +217,9 @@ const App = () => {
               {/* Add more protected routes here */}
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
             </Route>
+
+            {/* Public About page */}
+            <Route path="/about" element={<AboutPage />} />
 
             {/* Not found route */}
             <Route path="*" element={<NotFound />} />
